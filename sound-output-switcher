@@ -24,21 +24,51 @@ import os
 
 thisDir = os.path.dirname(os.path.realpath(__file__));
 iconPath = thisDir + "/speaker.svg"
-descriptions = subprocess.Popen([thisDir + '/sound-output-switcher.sh', '-d'], stdout=subprocess.PIPE).communicate()[0]
-descriptions = descriptions[0:-1].split('\n')
-profiles = subprocess.Popen([thisDir + '/sound-output-switcher.sh', '-p'], stdout=subprocess.PIPE).communicate()[0]
-profiles = profiles[0:-1].split('\n')
-active = -1
 
+active_profile = ""
+
+def parseProfileLine(line):
+	profile = line.split(' ')[0][0:-1]
+	desc = ' '.join(line.split(' ')[1:])
+	if profile.startswith("off"):
+		return (False, (None, None))
+	# Strip last parenthesis from description
+	desc = '('.join(desc.split('(')[0:-1])
+	return (True, (profile, desc))
+
+def getProfilesWithDescriptions():
+    	sp = subprocess.Popen(['pacmd', 'list-cards '], stdout=subprocess.PIPE).communicate()[0]
+	sp = sp[0:-1].split('\n')
+
+	result = []
+	current_card = 0
+	within_profile_list = False
+	for line in sp:
+		if line.strip().startswith("index:"):
+			current_card = line.split(' ')[-1]
+			print ("current_card " + str(current_card))
+		elif line.startswith("\tprofiles:"):
+			within_profile_list = True
+			print "profile list start"
+		elif line.startswith("\tactive profile:"):
+			within_profile_list = False
+			print "profile list end"
+		elif within_profile_list:
+			valid, (profile, desc) = parseProfileLine(line.strip())	
+			if valid:
+				result.append((current_card, profile, desc))
+
+	return result
  
-def menuCallback(w, i):
-  global active
-  if (i != active):
-    print "Activate profile " + profiles[i]
-    sp = subprocess.Popen(['pacmd', 'set-card-profile 0 ' + profiles[i]], stdout=subprocess.PIPE).communicate()[0]
+def menuCallback(w, (card, profile)):
+  global active_profile
+  if (profile != active_profile):
+    print "Activate profile " + profile
+    cmd = 'set-card-profile ' + card + ' ' + profile
+    print cmd
+    sp = subprocess.Popen(['pacmd', cmd], stdout=subprocess.PIPE).communicate()[0]
     print sp
-    #subprocess.Popen(['notify-send', "Play sound through: " + descriptions[i]])
-    active = i
+    active_profile = profile
 
  
 if __name__ == "__main__":
@@ -49,18 +79,16 @@ if __name__ == "__main__":
   ind.set_status(appindicator.STATUS_ACTIVE)
   #ind.set_attention_icon("indicator-messages-new")
  
-  # create a menu
+  profiles_with_descriptions = getProfilesWithDescriptions()
+  print profiles_with_descriptions
+
   menu = gtk.Menu()
   group = gtk.RadioMenuItem()
-  for i, d in enumerate(descriptions):
-    menuItem = gtk.RadioMenuItem(group, d)
+  for card, profile, description in profiles_with_descriptions:
+    menuItem = gtk.RadioMenuItem(group, description)
     menu.append(menuItem)
-    # this is where you would connect your menu item up with a function:
-    menuItem.connect("activate", menuCallback, i)
-    # show the items
+    menuItem.connect("activate", menuCallback, (card, profile))
     menuItem.show()
-    if (i == 0):
-      menuItem.activate()
  
   ind.set_menu(menu)
  

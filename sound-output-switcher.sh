@@ -14,12 +14,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 getOutputProfiles() {
-	result=`pacmd list-cards | egrep -e "[^<]output:" | egrep -e "input" -v | cut -d ':' -f2 | sed -e 's/^ *//g' -e 's/ *$//g'`
+	# Find output profiles lines. Then awk trims leading whitespace, cut gets the substring till first space, sed removes tailing ':'. 
+	result=`pacmd list-cards | egrep -e "[^<]output:" | egrep -e "input" -v | awk '{$1=$1};1' | cut -d ' ' -f1 | sed 's/.$//'`
 	echo "${result}"
 }
 
 getOutputDescription() {
-	result=`pacmd list-cards | egrep -e "[^<]output:" | egrep -e "input" -v | cut -d ':' -f3 | sed -e 's/^ *//g' -e 's/ *$//g' | sed -e 's/\(Output.*\)//g'`
+	# Find output profile lines. Then awk trims leading whitespace, cut extracts the profile description, rev|cut|rev removes the last parenthised substring (which describes priority and availability)
+	result=`pacmd list-cards | egrep -e "[^<]output:" | egrep -e "input" -v | awk '{$1=$1};1' | cut -d ' ' -f2- | rev | cut -d '(' -f2- | rev`
 	echo "${result}"
 }
 

@@ -35,7 +35,7 @@ def menuCallback(w, i):
   global active
   if (i != active):
     print "Activate profile " + profiles[i]
-    sp = subprocess.Popen(['pacmd', 'set-card-profile 0 output:' + profiles[i]], stdout=subprocess.PIPE).communicate()[0]
+    sp = subprocess.Popen(['pacmd', 'set-card-profile 0 ' + profiles[i]], stdout=subprocess.PIPE).communicate()[0]
     print sp
     #subprocess.Popen(['notify-send', "Play sound through: " + descriptions[i]])
     active = i
